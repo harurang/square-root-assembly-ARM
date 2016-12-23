@@ -1,0 +1,146 @@
+#Hillary Arurang
+#Square Root
+
+# main registers used:
+# $f2 = input
+# $f6 = dividend
+# $f8 = midpoint
+# $f10 = midpoint squared
+# $f16 = divisor
+
+	.data
+prompt: 	.asciiz "Enter number: "
+
+answer: 	.asciiz "The square root is: "
+
+midpoint:   .asciiz "Midpoint: "
+
+newline: 	.asciiz "\n"
+
+.text
+main:
+	# prompt for input
+	li	$v0, 4
+	la $a0, prompt
+	syscall
+
+	#read in float
+	#f0 will contain value read in
+	li	$v0, 6
+	syscall
+
+	#get absolute value of input
+	abs.s $f2, $f0
+
+	#i couldn't load the number .0005 so i subtracted 1.5555 - 1.5550
+	#when squaring the midpoint, .0005 will be the greatest difference accepted between squared number and input
+	li.s $f4, 1.5555
+	li.s $f20, 1.5550
+	sub.s $f4, $f4, $f20
+
+	#input provided is the starting dividend
+	mov.s $f6, $f2
+
+	#divisor
+	li.s $f16, 2.0
+
+	L1:
+		#get midpoint
+		div.s $f8, $f6, $f16
+
+		#store midpoint on stack
+		addi $sp, $sp, -4
+		#store the floating point in a word stack
+		swc1 $f8, ($sp)
+		#counter
+		addi $t0, $t0, 4
+
+		#square midpoint
+		mul.s $f10, $f8, $f8
+
+		#subtract midpoint squared and input provided
+		sub.s $f12, $f10, $f2
+		#get absolute value of difference
+		abs.s $f12, $f12
+		#is the difference less than .0005
+		c.lt.s $f12, $f4
+		#if one
+		bc1t found
+
+		mov.s $f14, $f10
+		#is the squared midpoint less than input
+		c.lt.s $f14, $f2
+		#if one
+		bc1t lessThan
+
+		#else, the squared midpoint must be greater than the initial input provided
+		j greaterThan
+
+lessThan:
+	#the new dividend will be quotient + previous dividend
+	add.s $f6, $f8, $f6
+
+	j L1
+
+greaterThan:
+	#the new dividend will be the quotient
+	mov.s $f6, $f8
+
+	j L1
+
+found:
+	#print each midpoint
+	jal print
+
+	#print string
+	li	$v0, 4
+	la $a0, answer
+	syscall
+
+	#print float solution
+	mov.s $f12, $f8
+	li $v0, 2
+	syscall
+
+	#exit program
+	li $v0,10
+	syscall
+
+print:
+	#print string
+	li	$v0, 4
+	la $a0, midpoint
+	syscall
+
+	#new line
+	li $v0, 4
+	la $a0, newline
+	syscall
+
+	#go to top of stack
+	add $sp, $sp, $t0
+
+#prints values of stack from top to bottom
+printMidpoints:
+	addi $sp, $sp, -4
+
+	#put word value in floating point register
+	lwc1 $f12, ($sp)
+
+	#print float that is in $f12
+	li $v0, 2
+	syscall
+
+	#new line
+	li $v0, 4
+	la $a0, newline
+	syscall
+
+	#decrement counter
+	addi $t0, $t0, -4
+
+	#if our counter has not reached zero keep printing
+	bne $t0, $zero, printMidpoints
+
+	#return to callee
+	jr $ra
